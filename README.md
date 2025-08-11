@@ -17,4 +17,10 @@ This README contains all the necessary documentation and instructions correspond
     6. `generate_interpretation_text`: Used to generate sample interpretations on mediation analysis results.
     7. `generate_dag_plot`: Used to generate DAG plot.
 
+## Supplemenatry Files ##
+1. **User_guide_single_fix.Rmd**: This is the User Guide Rmd file.
+2. **report_template_sf.Rmd** and **report_template_mf.Rmd**: These are the report templates used to allow users to download a report of the analysis results using the Shiny App. sf is the single mediator fixed time point template and mf is the multiple mediator fixed time point template.
 
+## Important Folders ##
+1. **www**: This is the folder containing the rendered html User Guide as well as the Lilly logo image. Shiny requires external files added to the app to be in a folder titled “www” so don’t change the name or remove this folder. The app will not generate the Lilly Logo or the User Guide if this folder is removed or renamed
+2. **renv** / **renv.lock**: For publishing app on Posit Connect. More information here: [https://collab.lilly.com/:w:/r/sites/Intern2025-MediationAnalysis/Shared%20Documents/Zoe/Mediation%20App/Documentations%20and%20Instructions/Publishing%20App%20on%20Posit%20Connect%20Instructions.docx?d=w56f667d26a954b21ad09074803a1b815&csf=1&web=1&e=pUn2hP](https://collab.lilly.com/:w:/r/sites/Intern2025-MediationAnalysis/Shared%20Documents/Zoe/Mediation%20App/Documentations%20and%20Instructions/Publishing%20App%20on%20Posit%20Connect%20Instructions.docx?d=w56f667d26a954b21ad09074803a1b815&csf=1&web=1&e=cIAYZI)
