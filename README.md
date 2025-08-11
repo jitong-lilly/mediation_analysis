@@ -1,2 +1,1 @@
-Mediation Analysis R Shiny App Documentation <a name="TOP"></a>
-===================
+# Mediation Analysis Shiny App Documentation 1 #
