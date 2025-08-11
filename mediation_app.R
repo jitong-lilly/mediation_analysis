@@ -1,4 +1,3 @@
-# test
 # Call R script with all functions
 source("functions.R")
 
