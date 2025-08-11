@@ -156,8 +156,8 @@ estimates <- function(model, html_output = TRUE) {
   )
 }
 
-
 #################################### Multiple Mediator Estimation Plot ################################################
+
 generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, html_output = TRUE) {
   
   if (is.null(joint_name)) {
@@ -249,6 +249,7 @@ generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, htm
   # Final layout
   grid.arrange(combined_row, caption_note, nrow = 2, heights = c(10, 1))
 }
+
 #################################### Excel File of All Estimates ################################################
 
 file_of_estimates <- function(model, mreg_name, postcreg_name, outcome, multimp = FALSE, path = NULL) {
@@ -677,4 +678,3 @@ generate_dag_plot <- function(effect_table, exposure_var, mediator_var, outcome_
     theme_void()
   return(p)
 }
-
