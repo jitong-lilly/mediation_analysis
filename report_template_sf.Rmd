@@ -1,0 +1,111 @@
+---
+title: "Mediation Analysis Report - Single Mediator at Fixed Time"
+output: word_document
+params:
+  exposure: NULL
+  mediator: NULL
+  outcome: NULL
+  basec_vars: NULL
+  postc_vars: NULL
+  yreg_type: NULL
+  model_summary: NULL
+  path_table: NULL
+  dag_path: NULL
+  path_plot_path: NULL
+  proportion_mediated: NULL
+  interpretation_text: NULL
+  mreg_type: NULL
+  postcreg_type: NULL
+  interaction: NULL
+  missing_data_method: NULL
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(knitr)
+```
+
+# 1. Objective
+
+This analysis aimed to evaluate the extent to which the effect of `r params$exposure` on `r params$outcome` is mediated through `r params$mediator`. Specifically, we estimated the direct and indirect (mediated) effects using a counterfactual-based causal mediation approach. The results provide insight into the pathways by which the exposure impacts the outcome, and quantify the proportion of the total effect that is attributable to the mediator.
+
+
+# 2. Statistical Methodology
+This analysis examined how `r params$exposure` (treatment/exposure variable) affects `r params$outcome` (outcome variable), and to what extent this effect is mediated through `r params$mediator` (mediator variable).
+
+## Variables Used
+- **Exposure variable:** `r params$exposure`
+
+- **Mediator variable:** `r params$mediator`
+
+- **Outcome variable:** `r params$outcome`
+
+- **Baseline confounders:** `r if (length(params$basec_vars) > 0) paste0("{", paste(params$basec_vars, collapse = ", "), "}") else "None"`
+
+- **Post-exposure confounders:** `r if (length(params$postc_vars) > 0) paste0("{", paste(params$postc_vars, collapse = ", "), "}") else "None"`
+
+## Model Specifications
+- **Outcome model:** `r params$yreg_type` 
+
+- **Mediator model:** `r params$mreg_type`
+
+```{r postc_model_block, results='asis', echo=FALSE}
+if (!is.null(params$postcreg_type)) {
+  cat("- **Post-exposure confounder models:**\n")
+  formatted <- sapply(params$postcreg_type, function(x) {
+    parts <- strsplit(x, ":\\s*")[[1]]
+    paste0("  - **", parts[1], "**: ", parts[2])
+  })
+  cat(paste(formatted, collapse = "\n"))
+} else {
+  cat("- **Post-exposure confounder models:** None, there are no post exposure confounders in this model.\n")
+}
+```
+
+
+## Additional Settings
+- **Exposure-mediator interaction included:** `r if (params$interaction == TRUE) "Yes" else "No"`
+
+- **Missing data handling:** `r params$missing_data_method`
+
+# 3. Assumed Causal Structure
+The diagram below illustrates the assumed causal model used to guide variable selection and estimation of path-specific effects.
+```{r, fig.align='center', out.width='100%'}
+knitr::include_graphics(params$dag_path)
+```
+
+# 4. Path Effect Estimates
+The table below summarizes the estimated path-specific effects, including standard errors, confidence intervals, and p-values:
+```{r, fig.align='center', out.width='100%'}
+kable(params$path_table, digits = 3, caption = "Estimated Path Effects")
+```
+
+# 5. Visualization of Effects
+The forest plot below displays the estimated total, direct, and indirect effects with 95% confidence intervals:
+```{r, fig.align='center', out.width='100%'}
+knitr::include_graphics(params$path_plot_path)
+```
+
+# 6. Interpretations of Results
+```{r, results = 'asis'}
+cat(params$interpretation_text)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

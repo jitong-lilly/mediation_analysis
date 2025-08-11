@@ -1,0 +1,13 @@
+name: mediation_analysis
+title: mediation_analysis
+username: l104008
+account: l104008
+server: posit-connect.am.lilly.com
+hostUrl: https://posit-connect.am.lilly.com/__api__
+appId: 5224
+bundleId: 42694
+url: https://posit-connect.am.lilly.com/content/5124cc8b-3915-4690-a631-2182f3c6bce4/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Sample_Datasets/full_data.csv|Sample_Datasets/gpid_hscrp_data.csv|Sample_Datasets/gpid_kccq_data.csv|Sample_Datasets/gpid_smwt_data.csv

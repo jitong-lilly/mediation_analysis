@@ -1,0 +1,140 @@
+---
+title: "Mediation Analysis Report - Multiple Mediators at Fixed Time"
+output: word_document
+params:
+  exposure: NULL
+  mediators: NULL
+  outcome: NULL
+  basec_vars: NULL
+  postc_vars: NULL
+  yreg_type: NULL
+  model_summary: NULL
+  path_table: NULL
+  dag_path: NULL
+  path_plot_path: NULL
+  proportion_mediated: NULL
+  interpretation_text: NULL
+  mreg_type: NULL
+  postcreg_type: NULL
+  interaction: NULL
+  missing_data_method: NULL
+  all_models: NULL
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(knitr)
+```
+
+
+# 1. Objective
+This analysis aimed to evaluate the extent to which the effect of `r params$exposure` on `r params$outcome` is mediated through a set of mediators: `r paste0("{", paste(params$mediators, collapse = ", "), "}")`. We estimated path-specific effects—including direct, indirect, and total effects—for each mediator individually and jointly, using a counterfactual-based causal mediation framework. This helps disentangle how each mediator, and the group as a whole, contributes to the total effect.
+
+# 2. Statistical Methodology
+## Variables Used
+- **Exposure variable:** `r params$exposure`
+
+- **Mediator variables:** {`r paste(params$mediators, collapse = ", ")`}
+
+- **Outcome variable:** `r params$outcome`
+
+- **Baseline confounders:** `r if (length(params$basec_vars) > 0) paste0("{", paste(params$basec_vars, collapse = ", "), "}") else "None"`
+
+- **Post-exposure confounders:** `r if (length(params$postc_vars) > 0) paste0("{", paste(params$postc_vars, collapse = ", "), "}") else "None"`
+
+## Model Specifications
+- **Outcome model:** `r params$yreg_type`
+
+```{r, results='asis'}
+cat("- **Mediator models:**\n")
+if (!is.null(params$mreg_type)) {
+  for (i in seq_along(params$mediators)) {
+    cat(paste0("  - **", params$mediators[i], "**: ", params$mreg_type[i], "\n"))
+  }
+} else {
+  cat("  None specified.\n")
+}
+```
+
+```{r, results='asis'}
+if (!is.null(params$postcreg_type)) {
+  cat("- **Post-exposure confounder models:**\n")
+  for (line in params$postcreg_type) {
+    parts <- strsplit(line, ":\\s*")[[1]]
+    cat(paste0("  - **", parts[1], "**: ", parts[2], "\n"))
+  }
+} else {
+  cat("- **Post-exposure confounder models:** None.\n")
+}
+
+```
+
+
+## Additional Settings
+- **Exposure-mediator interaction included:** `r if (params$interaction == TRUE) "Yes" else "No"`
+
+- **Missing data handling:** `r params$missing_data_method`
+
+# 3. Overview of Models Run
+- **Joint Model (all mediators together):** `r paste0("{", paste(params$mediators, collapse = ", "), "}")`
+
+- **Marginal Models: one for each of the following mediators:** `r paste(params$mediators, collapse = ", ")`
+
+
+# 4. Results by Model
+```{r, results='asis'}
+for (model_name in names(params$all_models)) {
+  model <- params$all_models[[model_name]]
+
+  # Title
+  title <- if (model$is_joint) {
+    paste0("### Joint Model: ", paste(params$mediators, collapse = ", "))
+  } else {
+    paste0("### Mediator: ", model$mediator)
+  }
+  cat(title, "\n\n")
+
+  # 4.1 Path Effect Table
+  cat("**4.1 Estimated Path Effects**\n\n")
+  print(knitr::kable(model$table, digits = 3))
+  cat("\n\n")
+
+  # 4.2 DAG Diagram
+  cat("**4.2 DAG Diagram**\n\n")
+  cat("![](", model$dag_path, ")\n\n", sep = "")
+
+  # 4.3 Forest Plot of Effects
+  cat("**4.3 Forest Plot of Effects**\n\n")
+  cat("![](", model$path_plot_path, ")\n\n", sep = "")
+
+  # 4.4 Interpretation
+  cat("**4.4 Interpretation**\n\n")
+  cat(as.character(model$interpretation_text), "\n\n")
+
+  cat("\n\n---------------------------------------------\n\n")
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
