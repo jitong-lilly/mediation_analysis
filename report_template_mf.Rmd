@@ -71,8 +71,8 @@ parts <- c(
   sprintf("The proportion mediated was calculated as %s, and standard errors were derived using the bootstrap method.", pm_formula),
   sprintf("The outcome was %s.", params$outcome),
   if (nzchar(basec_sentence)) basec_sentence else NULL,
-  marginal_joint_sentence,
-  if (nzchar(postc_sentence)) postc_sentence else NULL
+  if (nzchar(postc_sentence)) postc_sentence else NULL,
+  marginal_joint_sentence
 )
 
 cat(paste(parts, collapse = " "))

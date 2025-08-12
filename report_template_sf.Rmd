@@ -30,9 +30,8 @@ library(knitr)
 This analysis aimed to evaluate the extent to which the effect of `r params$exposure` on `r params$outcome` is mediated through `r params$mediator`. Specifically, we estimated the direct and indirect (mediated) effects using a counterfactual-based causal mediation approach. The results provide insight into the pathways by which the exposure impacts the outcome, and quantify the proportion of the total effect that is attributable to the mediator.
 
 # 2. Methods
-```{r,  results = 'asis'}
+```{r,  results = 'asis', echo = FALSE}
 # 2. Statistical Methodology
-```{r methodology_text, results='asis', echo=FALSE}
 pm_formula <- if (tolower(params$yreg_type) == "linear") {
   "the indirect effect divided by the total effect, multiplied by 100%"
 } else if (tolower(params$yreg_type) == "logistic") {
@@ -60,8 +59,8 @@ parts <- c(
   sprintf("The proportion mediated was calculated as %s, and standard errors were derived using the bootstrap method.", pm_formula),
   sprintf("The outcome was %s.", params$outcome),
   if (nzchar(basec_text)) basec_text else NULL,
-  mediator_text,
-  if (nzchar(postc_text)) postc_text else NULL
+  if (nzchar(postc_text)) postc_text else NULL,
+  mediator_text
 )
 
 cat(paste(parts, collapse = " "))
