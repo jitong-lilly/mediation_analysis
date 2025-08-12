@@ -49,8 +49,16 @@ pm_formula <- if (tolower(params$yreg_type) == "linear") {
   "defined according to the chosen outcome model"
 }
 
+total_effect_sentence <- if (tolower(params$yreg_type) == "linear") {
+  "The total effect was defined as the sum of the direct and indirect effects."
+} else if (tolower(params$yreg_type) == "logistic") {
+  "The total effect was defined as the product of the direct and indirect effects."
+} else {
+  "The total effect was defined based on the chosen outcome model."
+}
+
 basec_sentence <- if (!is.null(params$basec_vars) && length(params$basec_vars) > 0) {
-  sprintf("Baseline covariates %s were adjusted for.", fmt_list(params$basec_vars))
+  sprintf("Models were adjusted for baseline covariates %s.", fmt_list(params$basec_vars))
 } else { "" }
 
 postc_sentence <- if (!is.null(params$postc_vars) && length(params$postc_vars) > 0) {
@@ -58,7 +66,7 @@ postc_sentence <- if (!is.null(params$postc_vars) && length(params$postc_vars) >
 } else { "" }
 
 marginal_joint_sentence <- sprintf(
-  "Mediators investigated were %s; marginal models were fit for each mediator individually, and a joint model was fit including all mediators simultaneously to estimate the combined mediated effect.",
+  "Mediators investigated were %s; Marginal models were fit for each mediator individually, and a joint model was fit including all mediators simultaneously to estimate the combined mediated effect.",
   fmt_list(params$mediators)
 )
 
@@ -67,7 +75,7 @@ parts <- c(
   sprintf("The direct effect quantified the effect of %s on change in %s independent of changes in the mediators.", params$exposure, params$outcome),
   sprintf("Conversely, the indirect effect captured the effect of %s on change in %s associated with changes in the mediators.", params$exposure, params$outcome),
   "Because these comparisons involve non-observable counterfactual scenarios, natural effect models were employed to estimate the direct and indirect effects.",
-  "The total effect was defined as the sum of these two components.",
+  total_effect_sentence,
   sprintf("The proportion mediated was calculated as %s, and standard errors were derived using the bootstrap method.", pm_formula),
   sprintf("The outcome was %s.", params$outcome),
   if (nzchar(basec_sentence)) basec_sentence else NULL,
@@ -76,7 +84,6 @@ parts <- c(
 )
 
 cat(paste(parts, collapse = " "))
-
 ```
 
 
