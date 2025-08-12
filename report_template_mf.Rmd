@@ -24,64 +24,63 @@ params:
 ```{r, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(knitr)
+# Helper to format lists with commas and "and"
+fmt_list <- function(x) {
+  x <- as.character(x)
+  n <- length(x)
+  if (n == 0) return("")
+  if (n == 1) return(x)
+  if (n == 2) return(paste(x, collapse = " and "))
+  paste(paste(x[1:(n-1)], collapse = ", "), "and", x[n])
+}
 ```
 
 
 # 1. Objective
-This analysis aimed to evaluate the extent to which the effect of `r params$exposure` on `r params$outcome` is mediated through a set of mediators: `r paste0("{", paste(params$mediators, collapse = ", "), "}")`. We estimated path-specific effects—including direct, indirect, and total effects—for each mediator individually and jointly, using a counterfactual-based causal mediation framework. This helps disentangle how each mediator, and the group as a whole, contributes to the total effect.
+This analysis aimed to evaluate the extent to which the effect of `r params$exposure` on `r params$outcome` is mediated through `r fmt_list(params$mediators)`. We estimated path-specific effects—including direct, indirect, and total effects—for each mediator individually and for all mediators jointly using a counterfactual-based causal mediation framework, to disentangle how each mediator and their combined effect contribute to the total effect.
 
-# 2. Statistical Methodology
-## Variables Used
-- **Exposure variable:** `r params$exposure`
-
-- **Mediator variables:** {`r paste(params$mediators, collapse = ", ")`}
-
-- **Outcome variable:** `r params$outcome`
-
-- **Baseline confounders:** `r if (length(params$basec_vars) > 0) paste0("{", paste(params$basec_vars, collapse = ", "), "}") else "None"`
-
-- **Post-exposure confounders:** `r if (length(params$postc_vars) > 0) paste0("{", paste(params$postc_vars, collapse = ", "), "}") else "None"`
-
-## Model Specifications
-- **Outcome model:** `r params$yreg_type`
-
-```{r, results='asis'}
-cat("- **Mediator models:**\n")
-if (!is.null(params$mreg_type)) {
-  for (i in seq_along(params$mediators)) {
-    cat(paste0("  - **", params$mediators[i], "**: ", params$mreg_type[i], "\n"))
-  }
+# 2. Methods
+```{r, results = 'asis'}
+pm_formula <- if (tolower(params$yreg_type) == "linear") {
+  "the indirect effect divided by the total effect, multiplied by 100%"
+} else if (tolower(params$yreg_type) == "logistic") {
+  "(Direct × (Indirect − 1)) divided by (Total effect − 1)"
 } else {
-  cat("  None specified.\n")
-}
-```
-
-```{r, results='asis'}
-if (!is.null(params$postcreg_type)) {
-  cat("- **Post-exposure confounder models:**\n")
-  for (line in params$postcreg_type) {
-    parts <- strsplit(line, ":\\s*")[[1]]
-    cat(paste0("  - **", parts[1], "**: ", parts[2], "\n"))
-  }
-} else {
-  cat("- **Post-exposure confounder models:** None.\n")
+  "defined according to the chosen outcome model"
 }
 
+basec_sentence <- if (!is.null(params$basec_vars) && length(params$basec_vars) > 0) {
+  sprintf("Baseline covariates %s were adjusted for.", fmt_list(params$basec_vars))
+} else { "" }
+
+postc_sentence <- if (!is.null(params$postc_vars) && length(params$postc_vars) > 0) {
+  sprintf("Post-treatment confounders %s were controlled for.", fmt_list(params$postc_vars))
+} else { "" }
+
+marginal_joint_sentence <- sprintf(
+  "Mediators investigated were %s; marginal models were fit for each mediator individually, and a joint model was fit including all mediators simultaneously to estimate the combined mediated effect.",
+  fmt_list(params$mediators)
+)
+
+parts <- c(
+  sprintf("Mediation analyses were conducted to decompose the total effect of %s on %s into direct effect and indirect effect.", params$exposure, params$outcome),
+  sprintf("The direct effect quantified the effect of %s on change in %s independent of changes in the mediators.", params$exposure, params$outcome),
+  sprintf("Conversely, the indirect effect captured the effect of %s on change in %s associated with changes in the mediators.", params$exposure, params$outcome),
+  "Because these comparisons involve non-observable counterfactual scenarios, natural effect models were employed to estimate the direct and indirect effects.",
+  "The total effect was defined as the sum of these two components.",
+  sprintf("The proportion mediated was calculated as %s, and standard errors were derived using the bootstrap method.", pm_formula),
+  sprintf("The outcome was %s.", params$outcome),
+  if (nzchar(basec_sentence)) basec_sentence else NULL,
+  marginal_joint_sentence,
+  if (nzchar(postc_sentence)) postc_sentence else NULL
+)
+
+cat(paste(parts, collapse = " "))
+
 ```
 
 
-## Additional Settings
-- **Exposure-mediator interaction included:** `r if (params$interaction == TRUE) "Yes" else "No"`
-
-- **Missing data handling:** `r params$missing_data_method`
-
-# 3. Overview of Models Run
-- **Joint Model (all mediators together):** `r paste0("{", paste(params$mediators, collapse = ", "), "}")`
-
-- **Marginal Models: one for each of the following mediators:** `r paste(params$mediators, collapse = ", ")`
-
-
-# 4. Results by Model
+# 3. Results by Model
 ```{r, results='asis'}
 for (model_name in names(params$all_models)) {
   model <- params$all_models[[model_name]]
@@ -95,20 +94,20 @@ for (model_name in names(params$all_models)) {
   cat(title, "\n\n")
 
   # 4.1 Path Effect Table
-  cat("**4.1 Estimated Path Effects**\n\n")
+  cat("**3.1 Estimated Path Effects**\n\n")
   print(knitr::kable(model$table, digits = 3))
   cat("\n\n")
 
   # 4.2 DAG Diagram
-  cat("**4.2 DAG Diagram**\n\n")
+  cat("**3.2 DAG Diagram**\n\n")
   cat("![](", model$dag_path, ")\n\n", sep = "")
 
   # 4.3 Forest Plot of Effects
-  cat("**4.3 Forest Plot of Effects**\n\n")
+  cat("**3.3 Forest Plot of Effects**\n\n")
   cat("![](", model$path_plot_path, ")\n\n", sep = "")
 
   # 4.4 Interpretation
-  cat("**4.4 Interpretation**\n\n")
+  cat("**3.4 Interpretation**\n\n")
   cat(as.character(model$interpretation_text), "\n\n")
 
   cat("\n\n---------------------------------------------\n\n")
