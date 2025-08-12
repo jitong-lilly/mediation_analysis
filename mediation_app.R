@@ -1420,8 +1420,8 @@ server <- function(input, output) {
   
   ### Output path estimate plot ---------------------------------------------------------------------------------
   output$path_plot_sf <- renderPlot({
-    req(cmest_results_sf())
-    estimates(cmest_results_sf())$plot()
+    req(cmest_results_sf(), last_yreg_sf())
+    estimates(cmest_results_sf(), yreg_type = last_yreg_sf())$plot()
   })
   
   ### Output model Summary-----------------------------------------------------------------------------
@@ -1483,8 +1483,17 @@ server <- function(input, output) {
       dag_file_path <- file.path(tempdir(), "dag_sf.png")
       path_plot_file_path <- file.path(tempdir(), "path_plot_sf.png")
       
-      ggsave(dag_file_path, plot = dag_result_sf(), width = 14, height = 6)
-      ggsave(path_plot_file_path, plot = estimates(cmest_results_sf(), html_output = FALSE)$plot(), width = 14, height = 6)
+      ggsave(
+        dag_file_path, 
+        plot = dag_result_sf(), 
+        width = 14, height = 6
+        )
+      
+      ggsave(
+        path_plot_file_path,
+        plot = estimates(cmest_results_sf(), html_output = FALSE, yreg_type = last_yreg_sf())$plot(),
+        width = 14, height = 6
+        )
       
       # Capture raw summary
       model_output <- capture.output(print(cmest_results_sf()))
@@ -2023,7 +2032,7 @@ server <- function(input, output) {
   # Building the tab box output for estimation plots ---------------------------------------------------------------------------------
   output$combined_plot_mf <- renderPlot({
     req(all_mediator_results())
-    generate_stacked_estimate_plots(all_mediator_results(), joint_model_name())
+    generate_stacked_estimate_plots(all_mediator_results(), joint_name = joint_model_name(), yreg_type = input$yreg_mf)
   }, height = function() {
     req(all_mediator_results())
     250 * length(all_mediator_results())
@@ -2367,54 +2376,72 @@ server <- function(input, output) {
     filename = function() {
       paste0("mediation_report_multiple_mediators.docx")
     },
-    
     content = function(file) {
       req(all_mediator_results())
       
-      temp_dir <- tempdir()
+      temp_dir   <- tempdir()
       all_models <- all_mediator_results()
       model_list <- list()
+      
+      # Build the combined plot ONCE for the joint model (same as output$combined_plot_mf)
+      joint_nm <- joint_model_name()
+      combined_plot <- generate_stacked_estimate_plots(
+        results_list = all_models,
+        joint_name   = joint_nm,
+        html_output  = FALSE,
+        yreg_type    = input$yreg_mf
+      )
       
       for (model_name in names(all_models)) {
         model <- all_models[[model_name]]
         
         # Create safe filenames
-        dag_filename <- paste0("dag_", gsub("[^A-Za-z0-9]", "_", model_name), ".png")
+        dag_filename       <- paste0("dag_", gsub("[^A-Za-z0-9]", "_", model_name), ".png")
         path_plot_filename <- paste0("path_plot_", gsub("[^A-Za-z0-9]", "_", model_name), ".png")
         
-        dag_path <- file.path(temp_dir, dag_filename)
+        dag_path       <- file.path(temp_dir, dag_filename)
         path_plot_path <- file.path(temp_dir, path_plot_filename)
         
+        # Save DAG
         ggsave(dag_path, plot = dag_results_mf()[[model_name]]$plot, width = 14, height = 6)
-        ggsave(path_plot_path,
-               plot = estimates(model$summary, html_output = FALSE)$plot(), width = 14, height = 6
-        )
         
+        # Save the correct plot:
+        # - Joint model -> combined stacked plot
+        # - Marginal models -> per-model estimates plot
+        if (model_name == joint_nm) {
+          ggsave(path_plot_path, plot = combined_plot, width = 14, height = 10)
+        } else {
+          ggsave(
+            path_plot_path,
+            plot = estimates(model$summary, html_output = FALSE, yreg_type = input$yreg_mf)$plot(),
+            width = 14, height = 6
+          )
+        }
         
         # Use relative paths
-        dag_rel_path <- basename(dag_path)
+        dag_rel_path       <- basename(dag_path)
         path_plot_rel_path <- basename(path_plot_path)
         
         # Generate interpretation
         interpretation_text <- generate_interpretation_text(
-          effect_table = model$table,
-          outcome = input$outcome_mf,
-          mediator = model_name,
-          is_joint_model = (model_name == joint_model_name()),
-          basec_vars = input$basec_mf,
-          postc_vars = input$postc_mf,
-          yreg_type = input$yreg_mf,
-          html_output = FALSE
+          effect_table  = model$table,
+          outcome       = input$outcome_mf,
+          mediator      = model_name,
+          is_joint_model = (model_name == joint_nm),
+          basec_vars    = input$basec_mf,
+          postc_vars    = input$postc_mf,
+          yreg_type     = input$yreg_mf,
+          html_output   = FALSE
         )
         
         # Store info with relative paths
         model_list[[model_name]] <- list(
-          table = model$table,
-          dag_path = dag_rel_path,
-          path_plot_path = path_plot_rel_path,
+          table               = model$table,
+          dag_path            = dag_rel_path,
+          path_plot_path      = path_plot_rel_path,
           interpretation_text = interpretation_text,
-          is_joint = (model_name == joint_model_name()),
-          mediator = model_name
+          is_joint            = (model_name == joint_nm),
+          mediator            = model_name
         )
       }
       
@@ -2441,9 +2468,9 @@ server <- function(input, output) {
       
       # Render inside temp_dir
       rmarkdown::render(
-        input = tempReport,
+        input       = tempReport,
         output_file = temp_output,
-        output_dir = temp_dir,
+        output_dir  = temp_dir,
         params = list(
           exposure = input$exposure_mf,
           outcome = input$outcome_mf,
@@ -2459,7 +2486,7 @@ server <- function(input, output) {
           } else {
             if (input$missing_handling_mf == "impute") "Multiple Imputation" else "Complete Case Analysis"
           },
-          all_models = model_list
+          all_models          = model_list
         ),
         envir = new.env(parent = globalenv())
       )

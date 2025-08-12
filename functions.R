@@ -37,7 +37,20 @@ my_cmest = function(data, model = "rb", outcome = outcome, yreg = "TRUE", yval =
 
 #################################### Path Estimates Table/ Plot Function ######################## ########################
 
-estimates <- function(model, html_output = TRUE) {
+estimates <- function(model, html_output = TRUE, yreg_type = NULL) {
+  # Reference line setup (always solid pink)
+  ref_x <- if (!is.null(yreg_type) && yreg_type == "linear") 0 else 1
+  ref_color <- "#EF3B7B"
+  ref_label_html <- if (!is.null(yreg_type) && yreg_type == "linear") 
+    "<span style='color:#EF3B7B;'><b>Pink dashed line (0)</b></span> is the reference for <b>continuous outcomes</b>."
+  else 
+    "<span style='color:#EF3B7B;'><b>Pink dashed line (1)</b></span> is the reference for <b>binary outcomes</b>."
+  
+  ref_caption_text <- if (!is.null(yreg_type) && yreg_type == "linear") 
+    "Note: Pink dashed line (0) = reference for continuous outcome."
+  else 
+    "Note: Pink dashed line (1) = reference for binary outcome."
+  
   # Estimate table
   path_est_tbl <- data.frame(
     "Path" = tolower(names(model$effect.pe)),
@@ -61,22 +74,20 @@ estimates <- function(model, html_output = TRUE) {
   rownames(path_est_tbl) <- NULL
   colnames(path_est_tbl) <- c("Path", "Estimate", "SE", "CI_Lower", "CI_Upper", "Pvalue")
   
-  # Forest plot
+  # Forest plot (single solid pink reference line)
   plot1 <- path_est_tbl %>%
     filter(Path %in% c("Total Effect", "Indirect Effect", "Direct Effect")) %>%
     mutate(Path = factor(Path, levels = c("Total Effect", "Indirect Effect", "Direct Effect"))) %>%
     ggplot(aes(x = Estimate, y = Path)) +
-    geom_vline(xintercept = 0, linetype = "dashed", color = "#EF3B7B", linewidth = 1) +
-    geom_vline(xintercept = 1, linetype = "dotted", color = "#FF9B2B", linewidth = 2) +
+    geom_vline(xintercept = ref_x, color = ref_color, linewidth = 1, linetype = "dashed") +
     geom_point(size = 5, color = "#438BFF") +
     geom_errorbarh(aes(xmin = CI_Lower, xmax = CI_Upper, height = 0.13), color = "#438BFF", linewidth = 0.6) +
     geom_hline(yintercept = 0) +
     scale_x_continuous(
       breaks = function(x) {
         pretty_ticks <- scales::pretty_breaks(n = 5)(x)
-        extra_ticks <- c(0, 1)
-        combined <- sort(unique(c(pretty_ticks, extra_ticks)))
-        return(combined)
+        combined <- sort(unique(c(pretty_ticks, ref_x)))
+        combined
       },
       expand = expansion(mult = c(0.05, 0.05))
     ) +
@@ -90,7 +101,7 @@ estimates <- function(model, html_output = TRUE) {
       axis.text.x = element_text(size = 11),
       axis.title.x = element_text(size = 10),
       axis.title.y = element_blank(),
-      plot.title = element_text(hjust = 0.5, size = 16), 
+      plot.title = element_text(hjust = 0.5, size = 16),
       plot.margin = unit(c(0, 1.2, 0, 1), "cm")
     )
   
@@ -118,20 +129,16 @@ estimates <- function(model, html_output = TRUE) {
       plot.title = element_text(hjust = 0.5, size = 16)
     )
   
-  # Caption for non-HTML output (one-line, left-aligned)
-  caption_text <- "Note: Pink dashed line (0) = reference for additive scale; orange dotted line (1) = reference for odds ratio scale."
-  
-  # Define plot function depending on output type
+  # Caption (HTML vs non-HTML)
   if (html_output) {
     estimate_plot <- function() {
       grid.arrange(
         plot1, plot2, widths = c(6, 3),
         bottom = gridtext::richtext_grob(
-          "<span style='color:#EF3B7B;'><b>Pink dashed line (0)</b></span> is the reference for <b>continuous outcomes</b>. 
-       <span style='color:#FF8700;'><b>Orange dotted line (1)</b></span> is for <b>ratio-scale outcomes</b>.",
+          ref_label_html,
           gp = gpar(fontsize = 12),
-          hjust = 0.5,  # Center horizontally
-          x = 0.5       # Centered on the x-axis
+          hjust = 0.3,
+          x = 0.3
         )
       )
     }
@@ -139,7 +146,7 @@ estimates <- function(model, html_output = TRUE) {
     estimate_plot <- function() {
       grid.arrange(
         plot1, plot2, widths = c(6, 3),
-        bottom = textGrob(caption_text, gp = gpar(fontsize = 11), hjust = 0.5, x = 0.5)
+        bottom = textGrob(ref_caption_text, gp = gpar(fontsize = 11), hjust = 0.3, x = 0.3)
       )
     }
   }
@@ -150,19 +157,23 @@ estimates <- function(model, html_output = TRUE) {
   
   list(
     table = path_est_tbl,
-    plot = estimate_plot,
-    pm = pm_value,
+    plot  = estimate_plot,
+    pm    = pm_value,
     summary = model
   )
 }
 
 #################################### Multiple Mediator Estimation Plot ################################################
 
-generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, html_output = TRUE) {
+generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, html_output = TRUE, yreg_type = NULL) {
   
   if (is.null(joint_name)) {
     joint_name <- names(results_list)[which.max(grepl("\\+", names(results_list)))]
   }
+  
+  # Reference line setup (solid pink line only)
+  ref_x <- if (!is.null(yreg_type) && yreg_type == "linear") 0 else 1
+  ref_color <- "#EF3B7B"
   
   # Reorder: joint model last
   model_names <- c(setdiff(names(results_list), joint_name), joint_name)
@@ -183,18 +194,16 @@ generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, htm
   all_df <- all_df %>%
     mutate(Label = sprintf("%.3f (%.3f, %.3f)", Estimate, CI_Lower, CI_Upper))
   
-  # Forest plot
+  # Forest plot (single solid pink reference line)
   p1 <- ggplot(all_df, aes(x = Estimate, y = Model)) +
-    geom_vline(xintercept = 0, linetype = "dashed", color = "#EF3B7B", linewidth = 1) +
-    geom_vline(xintercept = 1, linetype = "dotted", color = "#FF9B2B", linewidth = 2) +
+    geom_vline(xintercept = ref_x, color = ref_color, linewidth = 1, linetype = "dashed") +
     geom_point(size = 3.5, color = "#438BFF") +
     geom_errorbarh(aes(xmin = CI_Lower, xmax = CI_Upper), height = 0.25, color = "#438BFF", linewidth = 0.6) +
     facet_wrap(~Path, ncol = 1, scales = "free_y") +
     scale_x_continuous(
       breaks = function(x) {
         pretty_ticks <- scales::pretty_breaks(n = 5)(x)
-        extra_ticks <- c(0, 1)
-        combined <- sort(unique(c(pretty_ticks, extra_ticks)))
+        combined <- sort(unique(c(pretty_ticks, ref_x)))
         return(combined)
       },
       expand = expansion(mult = c(0.05, 0.05))) +
@@ -228,18 +237,23 @@ generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, htm
   # Combine plots
   combined_row <- arrangeGrob(p1, p2, widths = c(7, 2))
   
-  # Caption: HTML vs Non-HTML output
+  # Caption: HTML vs Non-HTML output (single pink line wording)
   if (html_output) {
     caption_note <- gridtext::richtext_grob(
-      "<span style='color:#EF3B7B;'><b>Pink dashed line (0)</b></span> is the reference for <b>continuous outcomes</b>. 
-       <span style='color:#FF8700;'><b>Orange dotted line (1)</b></span> is for <b>ratio-scale outcomes</b>.",
+      if (!is.null(yreg_type) && yreg_type == "linear")
+        "<span style='color:#EF3B7B;'><b>Pink dashed line (0)</b></span> is the reference for <b>continuous outcomes</b>."
+      else
+        "<span style='color:#EF3B7B;'><b>Pink dashed line (1)</b></span> is the reference for <b>binary outcomes</b>.",
       gp = gpar(fontsize = 12),
       hjust = 0.5,
       x = 0.5
     )
   } else {
     caption_note <- textGrob(
-      "Note: Pink dashed line (0) = reference for additive scale; orange dotted line (1) = reference for odds ratio scale.",
+      if (!is.null(yreg_type) && yreg_type == "linear")
+        "Note: Pink dashed line (0) = reference for continuous outcomes."
+      else
+        "Note: Pink dashed line (1) = reference for binary outcomes.",
       gp = gpar(fontsize = 11),
       hjust = 0.5,
       x = 0.5
@@ -249,6 +263,7 @@ generate_stacked_estimate_plots <- function(results_list, joint_name = NULL, htm
   # Final layout
   grid.arrange(combined_row, caption_note, nrow = 2, heights = c(10, 1))
 }
+
 
 #################################### Excel File of All Estimates ################################################
 
