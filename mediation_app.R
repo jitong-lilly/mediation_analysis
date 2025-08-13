@@ -12,9 +12,9 @@ source("functions.R")
 # mediator_model_types = c("rb", "ne", "gformula")
 
 # FOR TESTING PURPPOSES
-outcome_reg_types = c("linear", "logistic", "loglinear", "poisson")
+outcome_reg_types = c("linear", "logistic")
 
-mediator_reg_types = c("linear", "logistic", "loglinear", "poisson")
+mediator_reg_types = c("linear", "logistic")
 
 mediator_model_types = c("rb", "gformula")
 
@@ -1103,6 +1103,8 @@ server <- function(input, output) {
   # Checking/ Requirements for analysis to be ran 
   last_yreg_sf <- reactiveVal(NULL)
   pval_note_mf <- reactiveVal(NULL)
+  last_yreg_mf <- reactiveVal(NULL)           
+  mediators_snapshot_mf <- reactiveVal(NULL)
   
   # Single mediator fixed time server page ----------------------------------------------------------------------------------------------------------
   ### Rendering one selectInput for each postc confouner regression type --------------------------------------------------------------------------------
@@ -1272,7 +1274,7 @@ server <- function(input, output) {
     
     isolate({
       req(uploaded_data_sf())
-      last_yreg_sf(input$yreg_sf)
+      # last_yreg_sf(input$yreg_sf)
       
       # Check for duplicate variable selections
       all_vars_selected <- c(
@@ -1341,33 +1343,67 @@ server <- function(input, output) {
       data_for_model <- if (use_mi) uploaded_data_sf() else na.omit(selected_data_sf())
       
       # Fit model
-      result <- my_cmest(
-        data = data_for_model,
-        model = input$model_sf,
-        outcome = input$outcome_sf,
-        yreg = input$yreg_sf,
-        event = if (input$yreg_sf %in% c("coxph", "aft_exp", "aft_weibull")) input$eventvar_sf else NULL,
-        mediator = input$mediator_sf,
-        mreg = list(input$mreg_sf),
-        mval = list(length(input$mediator_sf)),
-        exposure = input$exposure_sf,
-        basec = input$basec_sf,
-        postc = input$postc_sf,
-        postcreg = postcreg_models,
-        EMint = as.logical(input$Emint_sf),
-        estimation = input$estimation_sf,
-        inference = ifelse(
-          input$estimation_sf == "imputation",
-          "bootstrap",
-          "delta"
-        ),
-        nboot = if (input$estimation_sf == "imputation") input$nboot_sf else NULL,
-        multimp = use_mi,
-        m = num_mi,
-        seed = input$seed_sf
-      )
+      result <- tryCatch({
+        my_cmest(
+          data = data_for_model,
+          model = input$model_sf,
+          outcome = input$outcome_sf,
+          yreg = input$yreg_sf,
+          event = if (input$yreg_sf %in% c("coxph", "aft_exp", "aft_weibull")) input$eventvar_sf else NULL,
+          mediator = input$mediator_sf,
+          mreg = list(input$mreg_sf),
+          mval = list(length(input$mediator_sf)),
+          exposure = input$exposure_sf,
+          basec = input$basec_sf,
+          postc = input$postc_sf,
+          postcreg = postcreg_models,
+          EMint = as.logical(input$Emint_sf),
+          estimation = input$estimation_sf,
+          inference = ifelse(input$estimation_sf == "imputation","bootstrap","delta"),
+          nboot = if (input$estimation_sf == "imputation") input$nboot_sf else NULL,
+          multimp = use_mi,
+          m = num_mi,
+          seed = input$seed_sf
+        )
+      }, error = function(e) {
+        waiter_hide()
+        showModal(modalDialog(
+          title = div(
+            style = "color: black; background-color: #EFD5E1; padding: 10px; border-radius: 4px; text-align: center;",
+            "❌ Model Fitting Error❌"         
+            ),
+          size = "l",
+          easyClose = TRUE,
+          footer = modalButton("OK"),
+          div(
+            style = "padding: 10px; font-size: 16px; line-height: 1.5;",
+            HTML(paste0(
+              "<b>What happened?</b><br/>",
+              "There is an error with the model fitting process. This commonly occurs when a <b>logistic</b> model is used with a <b>non-binary</b> variable, ",
+              "but it can also result from other specification issues. Please check the raw error for debugging.<br/><br/>",
+              "<b>Raw error:</b>"
+            )),
+            tags$div(
+              style = paste(
+                "margin-top: 8px;",
+                "background-color: #f9f9f9;",
+                "border: 1px solid #ddd;",
+                "border-radius: 6px;",
+                "padding: 10px;",
+                "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;",
+                "white-space: pre-wrap;",
+                "word-break: break-word;"
+              ),
+              paste(capture.output(print(e)), collapse = "\n")
+            )
+          )
+        ))
+        return(NULL)
+      })
       
+      if (is.null(result)) return(NULL)
       cmest_results_sf(result)
+      last_yreg_sf(input$yreg_sf)
       
       dag_result_sf(
         generate_dag_plot(
@@ -1609,10 +1645,10 @@ server <- function(input, output) {
     pval <- pm_row$Pvalue
     
     mediator_label <- input$mediator_sf
-    outcome_type <- input$yreg_sf
+    yreg_type <- last_yreg_sf()
+    if (is.null(yreg_type)) yreg_type <- input$yreg_sf  
+    is_ratio <- identical(yreg_type, "logistic")        
     
-    ratio_types <- c("logistic", "loglinear", "poisson", "quasipoisson", "negbin", "coxph", "aft_exp", "aft_weibull")
-    is_ratio <- outcome_type %in% ratio_types
     
     # Italic note in #D40639 with spacing
     note_text <- if (is_ratio) {
@@ -1957,29 +1993,68 @@ server <- function(input, output) {
         input[[paste0("postcreg_", i)]]
       })
       
-      # Run model
-      results_all_models <- run_multiple_mediator_models(
-        data = data_for_model,
-        model = input$model_mf,
-        outcome = input$outcome_mf,
-        yreg = input$yreg_mf,
-        # event = if (input$yreg_mf %in% c("coxph", "aft_exp", "aft_weibull")) input$eventvar_mf else NULL,
-        mediator_list = input$mediator_mf,
-        exposure = input$exposure_mf,
-        basec = input$basec_mf,
-        postc = input$postc_mf,
-        mreg_models = mreg_models,
-        postcreg_models = postcreg_models,
-        EMint = as.logical(input$Emint_mf),
-        estimation = "imputation",
-        inference = "bootstrap",
-        nboot = input$nboot_mf,
-        seed = input$seed_mf,
-        multimp = use_mi,
-        m = num_mi
-      )
+      # Run model with defensive check if model fitting has error
+      results_all_models <- tryCatch({
+        run_multiple_mediator_models(
+          data = data_for_model,
+          model = input$model_mf,
+          outcome = input$outcome_mf,
+          yreg = input$yreg_mf,
+          # event = if (input$yreg_mf %in% c("coxph", "aft_exp", "aft_weibull")) input$eventvar_mf else NULL,
+          mediator_list = input$mediator_mf,
+          exposure = input$exposure_mf,
+          basec = input$basec_mf,
+          postc = input$postc_mf,
+          mreg_models = mreg_models,
+          postcreg_models = postcreg_models,
+          EMint = as.logical(input$Emint_mf),
+          estimation = "imputation",
+          inference = "bootstrap",
+          nboot = input$nboot_mf,
+          seed = input$seed_mf,
+          multimp = use_mi,
+          m = num_mi
+        )
+      }, error = function(e) {
+        waiter_hide()
+        showModal(modalDialog(
+          title = div(
+            style = "color: black; background-color: #EFD5E1; padding: 10px; border-radius: 4px; text-align: center;",
+            "❌ Model Fitting Error"
+          ),
+          size = "l",
+          easyClose = TRUE,
+          footer = modalButton("OK"),
+          div(
+            style = "padding: 10px; font-size: 16px; line-height: 1.5;",
+            HTML(paste0(
+              "<b>What happened?</b><br/>",
+              "There is an error with the model fitting process.<br/> This commonly occurs when a <b>logistic</b> model is used with a <b>non-binary</b> variable, ",
+              "but it can also result from other specification issues. Please check the raw error for debugging.<br/><br/>",
+              "<b>Raw error:</b>"
+            )),
+            tags$div(
+              style = paste(
+                "margin-top: 8px;",
+                "background-color: #f9f9f9;",
+                "border: 1px solid #ddd;",
+                "border-radius: 6px;",
+                "padding: 10px;",
+                "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;",
+                "white-space: pre-wrap;",
+                "word-break: break-word;"
+              ),
+              paste(capture.output(print(e)), collapse = "\n")
+            )
+          )
+        ))
+        return(NULL)
+      })
       
+      if (is.null(results_all_models)) return(NULL)
       all_mediator_results(results_all_models)
+      last_yreg_mf(input$yreg_mf)
+      mediators_snapshot_mf(input$mediator_mf)
     })
     
     # Save p-value note based on selected yreg at time of run
@@ -2240,17 +2315,17 @@ server <- function(input, output) {
         ci_upper <- round(100 * pm_row$CI_Upper, 3)
         pval <- pm_row$Pvalue
         
-        # Mediator label
+        # Mediator label (FROZEN at last Run for the Joint tab)
         mediator_label <- if (name == joint_model_name()) {
-          paste0("{", paste(input$mediator_mf, collapse = ", "), "}")
+          paste0("{", paste(if (is.null(mediators_snapshot_mf())) input$mediator_mf else mediators_snapshot_mf(), collapse = ", "), "}")
         } else {
           name
         }
         
-        # Outcome model type
-        outcome_type <- input$yreg_mf
-        ratio_types <- c("logistic", "loglinear", "poisson", "quasipoisson", "negbin", "coxph", "aft_exp", "aft_weibull")
-        is_ratio <- outcome_type %in% ratio_types
+        # Outcome model type (FROZEN at last Run)
+        yreg_type <- last_yreg_mf()
+        if (is.null(yreg_type)) yreg_type <- input$yreg_mf   # fallback before first run
+        is_ratio <- identical(yreg_type, "logistic")         # ONLY distinguish logistic vs linear
         
         # Styled note with formula
         note_text <- if (is_ratio) {
