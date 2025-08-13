@@ -133,7 +133,7 @@ estimates <- function(model, html_output = TRUE, yreg_type = NULL) {
   if (html_output) {
     estimate_plot <- function() {
       grid.arrange(
-        plot1, plot2, widths = c(6, 3),
+        plot1, plot2, widths = c(7, 2),
         bottom = gridtext::richtext_grob(
           ref_label_html,
           gp = gpar(fontsize = 12),
@@ -145,8 +145,8 @@ estimates <- function(model, html_output = TRUE, yreg_type = NULL) {
   } else {
     estimate_plot <- function() {
       grid.arrange(
-        plot1, plot2, widths = c(6, 3),
-        bottom = textGrob(ref_caption_text, gp = gpar(fontsize = 11), hjust = 0.3, x = 0.3)
+        plot1, plot2, widths = c(7, 2),
+        bottom = textGrob(ref_caption_text, gp = gpar(fontsize = 11), hjust = 0.4, x = 0.4)
       )
     }
   }
