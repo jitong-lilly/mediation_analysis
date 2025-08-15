@@ -24,3 +24,6 @@ This README contains all the necessary documentation and instructions correspond
 ## Important Folders ##
 1. **www**: This is the folder containing the rendered html User Guide as well as the Lilly logo image. Shiny requires external files added to the app to be in a folder titled “www” so don’t change the name or remove this folder. The app will not generate the Lilly Logo or the User Guide if this folder is removed or renamed
 2. **renv** / **renv.lock**: For publishing app on Posit Connect. More information [here](https://collab.lilly.com/:w:/r/sites/Intern2025-MediationAnalysis/Shared%20Documents/Zoe/Mediation%20App/Documentations%20and%20Instructions/Publishing%20App%20on%20Posit%20Connect%20Instructions.docx?d=w56f667d26a954b21ad09074803a1b815&csf=1&web=1&e=cIAYZI)
+
+## Links ##
+1. Publishing on [Posit Connect](https://posit-connect.am.lilly.com/__docs__/user/publishing-overview/)
